@@ -3,16 +3,17 @@ import scipy.signal as sig
 import numpy as np
 
 
-def freq(tf: sig.TransferFunction, res=200, type='stem', grid=False, full=False, norm=True, name: str = None, filename: str = None):
+def freq(tf: sig.TransferFunction, res=200, type='stem', lim: tuple=None, grid=False, full=False, norm=True, name: str = None, filename: str = None):
     """
     Plot the frequency response of a transfer function
     -----
     Wrapper for the scipy.signal.freqz function. Input `tf` must be a transfer function object from the scipy.signal library.
     Allows plotting with options directly from a transfer function.
-    
+
     The following options are available for the plot:
     - `res`: Resolution of the calculated frequency response. Higher is more detailed. Must be greater than 1.
     - `type`: Sets the plot types, chose between the options: `stem`, `point`, `solid` & `dashed`
+    - `lim`: Limits the dB range to the specified interval. Should be passed as a tuple of floats: (dB min, dB max)
     - `grid`: Enable gridlines on the plot
     - `full`: Mirrors the frequency response from 0..1 on to -1..0 to achieve -1..1 coverage. 
             This option will NOT correctly reflect systems with poles/zeros that are not real or complex conjugate pairs
@@ -22,7 +23,8 @@ def freq(tf: sig.TransferFunction, res=200, type='stem', grid=False, full=False,
     """
 
     # Calculate frequency response
-    if res < 1: raise ValueError('The specified resolution value is below 1')
+    if res < 1:
+        raise ValueError('The specified resolution value is below 1')
 
     w, h = sig.freqz(tf.num, tf.den, worN=res)
 
@@ -30,7 +32,7 @@ def freq(tf: sig.TransferFunction, res=200, type='stem', grid=False, full=False,
     h = abs(h)/max(abs(h)) if norm else abs(h)
 
     # Convert magnitude to dB and normalize frequency
-    h_dB = 20*np.log10(h)
+    h_dB = 20.0 * np.log10(h)
     w_norm = w/np.pi
 
     # Extend plot
@@ -54,12 +56,20 @@ def freq(tf: sig.TransferFunction, res=200, type='stem', grid=False, full=False,
         case _:
             raise Exception('Invalid plot type')
 
-    if grid: plt.grid(alpha=0.5)
+    if grid:
+        plt.grid(alpha=0.5)
 
     plt.title(f'Frequency response of {name}' if name else 'Frequency response')
     plt.xlabel('Frequency (normalized)/$\pi$')
     plt.ylabel('Magnitude (normalized) [dB]' if norm else 'Magnitude [dB]')
     plt.xlim([-1, 1] if full else [0, 1])
+
+    # Custom dB limit
+    if lim:
+        if lim[0] >= lim[1]:
+            raise ValueError('Invalid dB limit range')
+
+        plt.ylim([lim[0], lim[1]])
 
     # Save or display plot
     plt.savefig(filename + '.png', dpi=600) if filename else plt.show()
@@ -73,7 +83,7 @@ def pz(tf: sig.TransferFunction, name: str = None, filename: str = None):
     Plot pole/zero locations of a transfer function
     -----
     Input `tf` must be a transfer function object from the scipy.signal library.
-    
+
     The following options are available for the plot:
     - `name`: Appends the name to the title of the plot
     - `filename`: Saves the plot as an image with the specified name instead of displaying it. A path can be specified, but it has to end with the desired file name.
@@ -90,18 +100,16 @@ def pz(tf: sig.TransferFunction, name: str = None, filename: str = None):
     plt.axvline(0, color='lightgray', linewidth=1, alpha=0.8)
 
     # Calculate and set plot limits
-    offset = 1.3
+    offset = 1.2
 
-    xmax = max(np.amax(np.real(poles)), np.amax(np.real(zeros)))
-    xmin = min(np.amin(np.real(poles)), np.amin(np.real(zeros)))
-    ymax = max(np.amax(np.imag(poles)), np.amax(np.imag(zeros)))
-    ymin = min(np.amin(np.imag(poles)), np.amin(np.imag(zeros)))
+    xmin, xmax = minmax(np.real(poles), np.real(zeros))
+    ymin, ymax = minmax(np.imag(poles), np.imag(zeros))
 
     center_x = (xmax + xmin)/2
     center_y = (ymax + ymin)/2
 
     pad = max(abs(xmax - xmin)/2, abs(ymax - ymin)/2) * offset
-    
+
     # Guard to ensure that pad has a positive value
     pad = pad if pad else offset
 
@@ -136,25 +144,26 @@ def pz(tf: sig.TransferFunction, name: str = None, filename: str = None):
     plt.clf()
 
 
-def bode(tf: sig.TransferFunction, log=True, res=50, start=None, stop=None, name: str = None, filename: str = None):
+def bode(tf: sig.TransferFunction, log=True, res=50, flim: tuple=None, dblim: tuple=None, name: str = None, filename: str = None):
     """
     Plot phase and gain response of a transfer function
     -----
     Input `tf` must be a transfer function object from the scipy.signal library, with the time interval dt set to 1/fs.
-    The plot defaults to the range freq = 0 to Nyquist freq, but custom start and stop frequencies can be set. 
+    The plot defaults to the range freq = 10^-5 Hz to Nyquist freq, but custom start and stop frequencies within this range can be set. 
     Very narrow custom frequency intervals do not work well with a logartihmic frequency axis, due to low resolution at high frequencies.
 
     The following options are available for the plot:
     - `log`: Sets the frequency axis to be logarithmic, creating a true bode plot
     - `res`: The number of frequencies where the transfer function is evaluated. Value is multiplied with 1000.
-    - `start`: Set a new starting frequency for the plot. `start`must be an integer greater than 0 and less than the Nyquist frequency of the transfer function. Cannot be equal to `stop`.
-    - `stop`: Set a new stop frequency for the plot. `stop`must be an integer greater than the starting frequency and less than or equal to the Nyquist frequency of the transfer function. Cannot be equal to `start`.
+    - `flim`: Limits the frequency range to the specified interval. Should be passed as a tuple of integers or floats: (freq min, freq max)
+    - `dblim`: Limits the dB range to the specified interval. Should be passed as a tuple of floats: (dB min, dB max)
     - `name`: Appends the name to the title of the plot
     - `filename`: Saves the plot as an image with the specified name instead of displaying it. A path can be specified, but it has to end with the desired file name.
     """
 
     # Check that transer function is valid
-    if not tf.dt: raise Exception('Specified transfer function must have a dt value')
+    if not tf.dt:
+        raise Exception('Specified transfer function must have a dt value')
 
     # Calculate sampling frequency, Nyquist frequency and resolution
     fs = round(1/tf.dt)
@@ -163,30 +172,10 @@ def bode(tf: sig.TransferFunction, log=True, res=50, start=None, stop=None, name
     res *= 1000
 
     # Create Bodeplot components
-    w = np.logspace(0.0, np.log10(res/2), num=res) / res if log else np.array(range(0, res + 1)) / (2 * res)
-    
+    w = np.logspace(0.00001, np.log10(res/2), num=res) / res if log else np.array(range(0, res + 1)) / (2 * res)
+
     w, mag, phase = sig.dbode(tf, w=w)
 
-    # Set custom frequency interval if chosen, and check if provided start/stop values are valid
-    index = lambda val: np.absolute(w - val).argmin()
-
-    if start or stop:
-        start = start if start else 0
-        stop = stop if stop else nq
-
-        # Check that start and stop values are valid
-        if start < 0 or start >= nq or start >= stop:
-            raise ValueError('The start frequency must be greater than 0 and less than Nyquist frequency and stop (if set)')
-        elif stop < 0 or stop > nq:
-            raise ValueError('The stop frequency must be greater than 0 and start (if set) and less than Nyquist frequency')
-
-        start = index(start)
-        stop = index(stop)
-
-        w = w[start:stop]
-        mag = mag[start:stop]
-        phase = phase[start:stop]
-        
     # Plot
     fig, (ax1, ax2) = plt.subplots(2, sharex=True)
     fig.suptitle(f'Frequency response of {name}' if name else 'Frequency response')
@@ -196,18 +185,46 @@ def bode(tf: sig.TransferFunction, log=True, res=50, start=None, stop=None, name
     ax2.semilogx(w, phase) if log else ax2.plot(w, phase)
     ax2.set_xlabel("Frequency [Hz]")
 
+    # Set custom frequency interval if chosen, and check if provided start/stop values are valid
+    if flim:
+        start, stop = flim[0], flim[1]
+
+        # Check that start and stop values are valid
+        if start >= stop: 
+            raise ValueError('The start frequency must be less than end frequency')
+
+        for (val) in [start, stop]:
+            if val < 0 or val > nq: raise ValueError('Invalid frequency range')
+
+        def index(val): return np.absolute(w - val).argmin()
+
+        start_index = index(start)
+        stop_index = index(stop)
+
+        for (axis, type, pad) in [(ax1, mag, 0.5), (ax2, phase, 0.25)]:
+            axis.set_xlim(start, stop)
+            axis.set_ylim(segment(start_index, stop_index, type, pad))
+
+    # Custom dB limit
+    if dblim:
+        if dblim[0] >= dblim[1]: 
+            raise ValueError('Invalid dB limit range')
+
+        ax1.set_ylim([dblim[0], dblim[1]])
+
     # Save or display plot
     plt.savefig(filename + '.png', dpi=600) if filename else plt.show()
 
     # Clear figure
     plt.clf()
 
-def impulse(tf: sig.TransferFunction, samp=False, name=None, filename=None):
+
+def impulse(tf: sig.TransferFunction, samp=False, name: str=None, filename: str=None):
     """
     Plot impulse response of a transfer function
     -----
     Input `tf` must be a transfer function object from the scipy.signal library, with the time interval dt set to 1/fs.
-    
+
     The following options are available for the plot:
     - `samp`: Use samples instead of time for the first axis
     - `name`: Appends the name of the plot to the title on the plot
@@ -215,14 +232,15 @@ def impulse(tf: sig.TransferFunction, samp=False, name=None, filename=None):
     """
 
     # Check that transer function is valid
-    if not tf.dt: raise Exception('Specified transfer function must have a dt value')
+    if not tf.dt:
+        raise Exception('Specified transfer function must have a dt value')
 
     # Get impulse response
     t, y = sig.dimpulse((tf.num, tf.den, 1), n=len(sig.dimpulse(tf)[0])) if samp else sig.dimpulse(tf)
 
     # Plot
     plt.step(t, np.squeeze(y)) if samp else plt.plot(t, np.squeeze(y))
-    
+
     plt.grid(alpha=0.15)
     plt.title(f'Impulse response of {name}' if name else 'Impulse response')
     plt.xlabel('n [samples]' if samp else 'Time [s]')
@@ -234,6 +252,7 @@ def impulse(tf: sig.TransferFunction, samp=False, name=None, filename=None):
     # Clear figure
     plt.clf()
 
+
 def norm(tf: sig.TransferFunction):
     """
     Normalize the gain of a transfer function
@@ -243,3 +262,19 @@ def norm(tf: sig.TransferFunction):
     """
     _, gain = sig.freqz(tf.num, tf.den)
     tf.num = tf.num/max(abs(gain))
+
+
+# Helper functions
+def segment(start_index, stop_index, arr, pad):
+    maximum = max(arr[start_index:stop_index])
+    minimum = min(arr[start_index:stop_index])
+    diff = max(abs(maximum - minimum) * pad, 0.1)
+
+    return minimum - diff, maximum + diff
+
+
+def minmax(pole, zero):
+    maximum = max(np.amax(pole), np.amax(zero))
+    minimum = min(np.amin(pole), np.amin(zero))
+
+    return minimum, maximum
