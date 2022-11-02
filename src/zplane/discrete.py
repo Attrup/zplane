@@ -317,7 +317,7 @@ def impulse(
     """
 
     # Check that transer function is valid
-    if samp and not tf.dt:
+    if not samp and not tf.dt:
         raise Exception("Specified transfer function must have a dt value")
 
     # Get impulse response
