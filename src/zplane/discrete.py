@@ -104,7 +104,7 @@ def freq(
         plt.grid(alpha=0.5)
 
     if label:
-        plt.legend(loc='lower left')
+        plt.legend(loc="lower left")
 
     plt.title(f"Frequency response of {name}" if name else "Frequency response")
     plt.xlabel("Frequency (normalized)/$\pi$")
@@ -363,7 +363,7 @@ def fir2tf(ir, dt=None):
         raise Exception("Impulse response must have at least one sample")
 
     return sig.TransferFunction(
-        np.flip(ir), np.concatenate(([1], [0] * (len(ir) - 1)), dt=dt)
+        np.flip(ir), np.concatenate(([1], [0] * (len(ir) - 1))), dt=dt
     )
 
 
