@@ -362,9 +362,15 @@ def fir2tf(ir, dt=None):
     if len(ir) == 0:
         raise Exception("Impulse response must have at least one sample")
 
-    return sig.TransferFunction(
-        np.flip(ir), np.concatenate(([1], [0] * (len(ir) - 1))), dt=dt
-    )
+    match dt:
+        case None:
+            return sig.TransferFunction(
+                np.flip(ir), np.concatenate(([1], [0] * (len(ir) - 1)))
+            )
+        case _:
+            return sig.TransferFunction(
+                np.flip(ir), np.concatenate(([1], [0] * (len(ir) - 1))), dt=dt
+            )
 
 
 # Helper functions
