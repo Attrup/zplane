@@ -7,6 +7,7 @@ The following functions are available:
 - `bode`: Bode plot (Gain and Phase), non logarithmic frequency axis possible
 - `impulse`: Impulse response
 - `norm`: Normalize transfer function
+- `fir2tf`: Get FIR transfer function from impulse response
 
 ## Installation
 ```bash
