@@ -58,6 +58,9 @@ def freq(
             "List of transfer functions and list of labels must have the same length"
         )
 
+    # Pre-plot line at 0 to plot tf's on top
+    plt.axhline(0, color="silver")
+
     # Run through all tf's and plot
     for (i, transfer_function) in enumerate(tf):
         w, h = sig.freqz(transfer_function.num, transfer_function.den, worN=res)
@@ -75,8 +78,6 @@ def freq(
             w_norm = np.append(np.flip(w_norm)[: len(w_norm) - 1] * -1, w_norm)
 
         # Plot
-        plt.axhline(0, color="silver")
-
         match type:
             case "stem":
                 plt.stem(w_norm, h_dB, label=label[i] if label else None)
@@ -103,7 +104,7 @@ def freq(
         plt.grid(alpha=0.5)
 
     if label:
-        plt.legend()
+        plt.legend(loc='lower left')
 
     plt.title(f"Frequency response of {name}" if name else "Frequency response")
     plt.xlabel("Frequency (normalized)/$\pi$")
