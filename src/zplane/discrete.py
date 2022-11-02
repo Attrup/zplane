@@ -264,6 +264,24 @@ def norm(tf: sig.TransferFunction):
     tf.num = tf.num/max(abs(gain))
 
 
+def fir2tf(ir, dt=None):
+    """
+    Get the transfer function of finite impulse response (FIR)
+    -----
+    Input `ir` must be a non-empty 1-D array of scalar values.
+
+    The following options are available:
+    - 'dt': Sampling time [s]
+    """
+    # Check length of impulse response
+    if len(ir) == 0:
+        raise Exception('Impulse response must have at least one sample')
+
+    return sig.TransferFunction(
+        np.flip(ir), np.concatenate(([1], [0] * (len(ir) - 1)), dt=dt)
+    ) 
+
+
 # Helper functions
 def segment(start_index, stop_index, arr, pad):
     maximum = max(arr[start_index:stop_index])
