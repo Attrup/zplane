@@ -364,12 +364,10 @@ def fir2tf(ir, dt=None):
 
     match dt:
         case None:
-            return sig.TransferFunction(
-                np.flip(ir), np.concatenate(([1], [0] * (len(ir) - 1)))
-            )
+            return sig.TransferFunction(ir, np.concatenate(([1], [0] * (len(ir) - 1))))
         case _:
             return sig.TransferFunction(
-                np.flip(ir), np.concatenate(([1], [0] * (len(ir) - 1))), dt=dt
+                ir, np.concatenate(([1], [0] * (len(ir) - 1))), dt=dt
             )
 
 
