@@ -1,5 +1,5 @@
 # Z-Plane
-A handful of freqeuntly used plots when working with discrete systems or digital signal processing in Pyton. Z-Plane is built upon the scipy.signal module, using the `TransferFunction` class to pass all required system information to plot functions in a single object. This allows all plots to be executed in a single line of code, while Z-Plane handles the calculations and setup required to get the perfect plot.
+A handful of freqeuntly used plots when working with discrete systems or digital signal processing in Python. Z-Plane is built upon the scipy.signal module, using the `TransferFunction` class to pass all required system information to plot functions in a single object. This allows all plots to be executed in a single line of code, while Z-Plane handles the calculations and setup required to get the perfect plot.
 
 The following functions are available:
 - `freq`: Normalized frequency response
